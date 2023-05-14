@@ -30,7 +30,7 @@ def BloombergDAG():
                 "PersonId" INTEGER,
                 "Rank" INTEGER,
                 "NetWorth" INTEGER,
-                "YTDChange" INTEGER,
+                "YTDChange" FLOAT,
                 "Sector" TEXT,
                 "Timestamp" DATE
             );""",
@@ -48,7 +48,7 @@ def BloombergDAG():
                 "PersonId" INTEGER,
                 "Rank" INTEGER,
                 "NetWorth" INTEGER,
-                "YTDChange" INTEGER,
+                "YTDChange" FLOAT,
                 "Sector" TEXT,
                 "Timestamp" DATE
             );""",
@@ -57,7 +57,7 @@ def BloombergDAG():
     @task
     def get_data():
         now = datetime.now()
-        data_path = f"/root/airflow/data/bloomberg/{now.strftime('%Y')}/bloomberg-{now.strftime('%Y-%m-%d-%H-%M-%S')}.feather"
+        data_path = f"/airflow/data/bloomberg/{now.strftime('%Y')}/bloomberg-{now.strftime('%Y-%m-%d-%H-%M-%S')}.feather"
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
 
         data_bloomberg = requests.get(
@@ -86,7 +86,7 @@ def BloombergDAG():
         cur = conn.cursor()
         with open(data_path, "r") as file:
             cur.copy_expert(
-                "COPY employees_temp FROM STDIN WITH CSV HEADER DELIMITER AS ',' QUOTE '\"'",
+                "COPY bloomberg_temp FROM STDIN WITH CSV HEADER DELIMITER AS ',' QUOTE '\"'",
                 file,
             )
         conn.commit()
@@ -100,11 +100,11 @@ def BloombergDAG():
                 SELECT DISTINCT *
                 FROM employees_temp
             ) t
-            ON CONFLICT ("Serial Number") DO UPDATE
-            SET "Serial Number" = excluded."Serial Number";
+            ON CONFLICT ("PersonId") DO UPDATE
+            SET "PersonId" = excluded."PersonId";
         """
         try:
-            postgres_hook = PostgresHook(postgres_conn_id="tutorial_pg_conn")
+            postgres_hook = PostgresHook(postgres_conn_id="postgres_default")
             conn = postgres_hook.get_conn()
             cur = conn.cursor()
             cur.execute(query)
